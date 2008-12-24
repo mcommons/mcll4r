@@ -1,38 +1,41 @@
 require 'rest_client_base'
 
 class Mcll4r < RestClientBase
-  
-  HOST = "http://congress.mcommons.com"
 
-  def initialize(options={})
-    super
-    @host = options[:host] || HOST  #override default for testing
-  end
+  MAPPINGS = { 
+    :district_lookup => "districts/lookup.xml"
+  }
   
   def district_lookup(lat, lng)
-    rest(:get, :district_lookup, {'lat'=>lat.to_s, 'lng'=>lng.to_s})
+    get(:district_lookup, {:lat=>lat, :lng=>lng})
   end
 
-protected
+private
+
+  def host
+    "http://congress.mcommons.com"    
+  end
 
   def mapping(action)
-    {
-      :district_lookup => "districts/lookup.xml"
-    }[action]
+    MAPPINGS[action]
   end
 
   def check_for_errors(xml)
     error = (xml/"response/error").innerHTML
-    raise Mcll4rException.new(error) if error && error.size>0
+    raise RestClientException.new(error) if error && error.size>0
   end
 
-  def parse_district_lookup(xml)
+  def process_district_lookup_response(xml)
     response = (xml/"response")
-    [response/"lat", response/"lng"].map{|ll| ll.innerHTML}
+    val = {}
+    [:federal, :state_upper, :state_lower].each do |level|
+      val[level] = {}
+      [:state, :district, :display_name].each do |category|
+        val[level][category] = (response/"#{level}/#{category}").innerHTML
+      end
+    end
+    val
   end
 
-end
-
-class Mcll4rException < RestClientException
 end
 
