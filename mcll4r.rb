@@ -1,41 +1,24 @@
-require 'rest_client_base'
+require 'rubygems'
+require 'httparty'
 
-class Mcll4r < RestClientBase
-
-  MAPPINGS = { 
-    :district_lookup => "districts/lookup.xml"
-  }
+class Mcll4r
+  include HTTParty
+  base_uri "http://congress.mcommons.com"    
+  format :xml
   
   def district_lookup(lat, lng)
-    get(:district_lookup, {:lat=>lat, :lng=>lng})
+    filter_for_errors self.class.get("/districts/lookup.xml", :query=>{:lat=>lat, :lng=>lng})
   end
 
 private
 
-  def host
-    "http://congress.mcommons.com"    
-  end
-
-  def mapping(action)
-    MAPPINGS[action]
-  end
-
-  def check_for_errors(xml)
-    error = (xml/"response/error").innerHTML
-    raise RestClientException.new(error) if error && error.size>0
-  end
-
-  def process_district_lookup_response(xml)
-    response = (xml/"response")
-    val = {}
-    [:federal, :state_upper, :state_lower].each do |level|
-      val[level] = {}
-      [:state, :district, :display_name].each do |category|
-        val[level][category] = (response/"#{level}/#{category}").innerHTML
-      end
+  def filter_for_errors(hash)
+    if hash['response']['error']
+      raise DistrictNotFound.new(hash['response']['error'])
     end
-    val
+    hash
   end
 
 end
 
+class DistrictNotFound < Exception; end
