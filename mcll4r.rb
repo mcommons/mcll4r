@@ -21,4 +21,4 @@ private
 
 end
 
-class DistrictNotFound < Exception; end
+class DistrictNotFound < StandardError; end
